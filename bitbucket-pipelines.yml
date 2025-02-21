@@ -1,0 +1,136 @@
+image: python:3.7.4-alpine3.10
+options:
+  docker: true
+  size: 2x
+
+
+pipelines:
+  branches:
+    # dev:
+    # - step: 
+    #     name: Get dependencies
+    #     image: node:lts-alpine
+    #     script:
+    #       - pwd && ls -l 
+    #     artifacts:
+    #       - ./**
+    # - parallel:
+    #   - step:
+    #       name: 'Install awscli, Build App & push to ECR'
+    #       caches:
+    #         - pip
+    #       script:
+    #         - pip3 install awscli
+    #         - pwd && ls -l 
+    #         - >-
+    #           docker build
+    #           -t spectrum-lite-scoring
+    #           --build-arg RELEASE_VERSION=${BITBUCKET_COMMIT}
+    #           --build-arg BRANCH=${BITBUCKET_BRANCH}
+    #           --no-cache . ;
+    #         - pipe: atlassian/aws-ecr-push-image:1.2.2
+    #           variables:
+    #             AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+    #             AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+    #             AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+    #             IMAGE_NAME: spectrum-lite-scoring
+    #             TAGS: '${BITBUCKET_TAG} ${BITBUCKET_COMMIT}'
+    # - step:
+    #     name: 'Update k8s manifest'
+    #     image: alpine/git
+    #     script:
+    #       - export FILE=kustomize/cad-reader/cadreader-ui/overlays/dev/kustomization.yaml
+    #       - git clone git@bitbucket.org:inxeption/terrafrom.git 
+    #       - git config --global user.email "bitbucket.bot@inxeption.com" && git config --global user.name "bitbucket.bot"
+    #       - cd terrafrom/
+    #       - sed -i "/newTag*/c\    newTag":" ${BITBUCKET_COMMIT}" ${FILE}
+    #       - git add ${FILE}
+    #       - git commit -m "Updating image tag':'${BITBUCKET_COMMIT}"
+    #       - git push origin master
+    qa:
+    - step: 
+        name: Get dependencies
+        image: node:lts-alpine
+        script:
+          - pwd && ls -l 
+        artifacts:
+          - ./**
+    - parallel:
+      - step:
+          name: 'Install awscli, Build App & push to ECR'
+          caches:
+            - pip
+          script:
+            - pip3 install awscli
+            - pwd && ls -l 
+            - >-
+              docker build
+              -t spectrum-lite-scoring
+              --build-arg RELEASE_VERSION=${BITBUCKET_COMMIT}
+              --build-arg BRANCH=${BITBUCKET_BRANCH}
+              --no-cache . ;
+            - pipe: atlassian/aws-ecr-push-image:1.2.2
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                IMAGE_NAME: spectrum-lite-scoring
+                TAGS: '${BITBUCKET_TAG} ${BITBUCKET_COMMIT}-spectrum-lite-scoring-qa'
+    - step:
+        name: 'Update k8s manifest'
+        image: alpine/git
+        script:
+          - export FILE=kustomize/spectrum/overlays/dev-prisma3/kustomization.yaml
+          - git clone git@bitbucket.org:inxeption/terrafrom.git 
+          - git config --global user.email "eng.bit@inxeption.com" && git config --global user.name "EngineeringBitbucket"
+          - cd terrafrom/
+          - sed -i "/newTag.*-spectrum-lite-scoring-qa/c\    newTag":" ${BITBUCKET_COMMIT}-spectrum-lite-scoring-qa" ${FILE}
+          - git add ${FILE}
+          - git commit -m "Updating image tag':'${BITBUCKET_COMMIT}-spectrum-lite-scoring-qa"
+          - git push origin master
+
+    master:
+    - step: 
+        name: Get dependencies
+        image: node:lts-alpine
+        script:
+          - pwd && ls -l 
+        artifacts:
+          - ./**
+    - parallel:
+      - step:
+          name: 'Install awscli, Build App & push to ECR'
+          caches:
+            - pip
+          script:
+            - pip3 install awscli
+            - pwd && ls -l 
+            - >-
+              docker build
+              -t spectrum-lite-scoring
+              --build-arg RELEASE_VERSION=${BITBUCKET_COMMIT}
+              --build-arg BRANCH=${BITBUCKET_BRANCH}
+              --no-cache . ;
+            - pipe: atlassian/aws-ecr-push-image:1.2.2
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                IMAGE_NAME: spectrum-lite-scoring
+                TAGS: '${BITBUCKET_TAG} ${BITBUCKET_COMMIT}-spectrum-lite-scoring-prod'
+    - step:
+        name: 'Update k8s manifest'
+        image: alpine/git
+        script:
+          - export FILE=kustomize/spectrum/overlays/prod-prisma3/kustomization.yaml
+          - git clone git@bitbucket.org:inxeption/terrafrom.git 
+          - git config --global user.email "eng.bit@inxeption.com" && git config --global user.name "EngineeringBitbucket"
+          - cd terrafrom/
+          - sed -i "/newTag.*-spectrum-lite-scoring-prod/c\    newTag":" ${BITBUCKET_COMMIT}-spectrum-lite-scoring-prod" ${FILE}
+          - git add ${FILE}
+          - git commit -m "Updating image tag':'${BITBUCKET_COMMIT}-spectrum-lite-scoring-prod"
+          - git push origin master          
+definitions:
+  services:
+    docker:
+      memory: 4096
